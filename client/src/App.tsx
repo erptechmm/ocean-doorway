@@ -19,7 +19,6 @@ import {
 import { GitBranch, FileText, Settings, HelpCircle, ChevronRight, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
@@ -27,7 +26,7 @@ import SalesWorkflows from "@/pages/sales-workflows";
 import ReplitToVercel from "@/pages/replit-to-vercel";
 import Auth from "@/pages/auth";
 
-function AppSidebar({ user }: { user: User | null }) {
+function AppSidebar({ user }: { user: any }) {
   const [location, setLocation] = useLocation();
   const [techWorkflowsOpen, setTechWorkflowsOpen] = useState(false);
 
@@ -104,13 +103,14 @@ function AppSidebar({ user }: { user: User | null }) {
   );
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({ component: Component }: { component: any }) {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((res: any) => {
+      const session = res?.data?.session;
       setUser(session?.user ?? null);
       if (!session) {
         setLocation("/auth");
@@ -159,14 +159,15 @@ function Router() {
 
 // Main App Component
 function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((res: any) => {
+      const session = res?.data?.session;
       setUser(session?.user ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null);
     });
 
