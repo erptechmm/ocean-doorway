@@ -16,21 +16,42 @@ import {
   SidebarMenuSubButton,
   SidebarInset 
 } from "@/components/ui/sidebar";
-import { GitBranch, FileText, Settings, HelpCircle, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { GitBranch, FileText, Settings, HelpCircle, ChevronRight, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import SalesWorkflows from "@/pages/sales-workflows";
 import ReplitToVercel from "@/pages/replit-to-vercel";
+import Auth from "@/pages/auth";
 
-function AppSidebar() {
-  const [location] = useLocation();
+function AppSidebar({ user }: { user: User | null }) {
+  const [location, setLocation] = useLocation();
   const [techWorkflowsOpen, setTechWorkflowsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setLocation("/auth");
+  };
   
   return (
     <Sidebar>
       <SidebarHeader>
-        <h2 className="text-lg font-semibold text-sidebar-foreground px-2 py-1">Navigation</h2>
+        <div className="flex items-center justify-between px-2 py-1">
+          <h2 className="text-lg font-semibold text-sidebar-foreground">Navigation</h2>
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-8"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
@@ -83,12 +104,54 @@ function AppSidebar() {
   );
 }
 
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const [, setLocation] = useLocation();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (!session) {
+        setLocation("/auth");
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session) {
+        setLocation("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setLocation]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return user ? <Component /> : null;
+}
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/sales-workflows" component={SalesWorkflows} />
-      <Route path="/replit-to-vercel" component={ReplitToVercel} />
+      <Route path="/auth" component={Auth} />
+      <Route path="/">
+        {() => <ProtectedRoute component={Home} />}
+      </Route>
+      <Route path="/sales-workflows">
+        {() => <ProtectedRoute component={SalesWorkflows} />}
+      </Route>
+      <Route path="/replit-to-vercel">
+        {() => <ProtectedRoute component={ReplitToVercel} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -96,11 +159,25 @@ function Router() {
 
 // Main App Component
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <SidebarProvider>
-          <AppSidebar />
+          <AppSidebar user={user} />
           <SidebarInset>
             <Toaster />
             <Router />
