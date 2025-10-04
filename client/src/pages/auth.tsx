@@ -12,11 +12,11 @@ import { LogIn, UserPlus } from "lucide-react";
 
 export default function Auth() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check if user is already logged in
